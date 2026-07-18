@@ -13,6 +13,7 @@ export default function HarfButton({ harf, audioPath }: HarfButtonProps) {
 
   const stopRecognition = () => {
     if (recognitionRef.current) {
+      console.log("Mic stopped.");
       recognitionRef.current.stop();
       recognitionRef.current = null;
     }
@@ -21,10 +22,16 @@ export default function HarfButton({ harf, audioPath }: HarfButtonProps) {
 
   const startRecognition = () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) return;
+    if (!SpeechRecognition) {
+      alert("Speech recognition not supported.");
+      return;
+    }
 
+    console.log("Mic activated for:", harf);
     recognitionRef.current = new SpeechRecognition();
     recognitionRef.current.lang = 'ar-SA';
+    recognitionRef.current.continuous = false;
+    recognitionRef.current.interimResults = false;
     
     setStatus('listening');
 
@@ -32,25 +39,30 @@ export default function HarfButton({ harf, audioPath }: HarfButtonProps) {
       const transcript = event.results[0][0].transcript.trim();
       const cleanHarf = harf.replace('َ', '');
       
+      console.log(`Mic heard: "${transcript}" | Target: "${cleanHarf}"`);
+      
       if (transcript.includes(cleanHarf)) {
+        console.log("Match: Correct!");
         setStatus('correct');
       } else {
+        console.log("Match: Wrong.");
         setStatus('wrong');
       }
       setTimeout(() => setStatus('neutral'), 2000);
       recognitionRef.current = null;
     };
 
-    recognitionRef.current.onerror = () => stopRecognition();
+    recognitionRef.current.onerror = (event: any) => {
+      console.error("Speech Recognition Error:", event.error);
+      stopRecognition();
+    };
+
     recognitionRef.current.start();
   };
 
-  const handleAction = () => {
-    if (status === 'listening') {
-      stopRecognition();
-      return;
-    }
-    
+  // Helper to handle the "click" only if we weren't just recording
+  const handleShortClick = () => {
+    console.log("Button clicked (short press).");
     if (audioPath) {
       const audio = new Audio(audioPath);
       audio.play().catch(console.error);
@@ -59,39 +71,44 @@ export default function HarfButton({ harf, audioPath }: HarfButtonProps) {
 
   return (
     <button
-      // Mouse events
       onMouseDown={(e) => {
-        e.preventDefault(); // Prevents focus/selection
+        e.preventDefault();
+        console.log("Mouse down detected, waiting for long press...");
         pressTimer.current = setTimeout(() => startRecognition(), 500);
       }}
       onMouseUp={() => {
         if (pressTimer.current) {
+          // It was a short press
           clearTimeout(pressTimer.current);
-          handleAction();
+          pressTimer.current = null;
+          handleShortClick();
         } else if (status === 'listening') {
+          // We were recording, now we release
           stopRecognition();
         }
       }}
       onMouseLeave={() => {
-        if (pressTimer.current) clearTimeout(pressTimer.current);
+        if (pressTimer.current) {
+          console.log("Mouse left, cancelling.");
+          clearTimeout(pressTimer.current);
+          pressTimer.current = null;
+        }
       }}
-      
-      // Touch events
       onTouchStart={(e) => {
-        // e.preventDefault() is omitted here or used carefully to allow scroll if needed, 
-        // but adding it here prevents the copy/context menu
+        console.log("Touch start detected, waiting for long press...");
         pressTimer.current = setTimeout(() => startRecognition(), 500);
       }}
       onTouchEnd={(e) => {
         if (pressTimer.current) {
+          // It was a short press
           clearTimeout(pressTimer.current);
-          handleAction();
+          pressTimer.current = null;
+          handleShortClick();
         } else if (status === 'listening') {
+          // We were recording, now we release
           stopRecognition();
         }
       }}
-      
-      // Added select-none and touch-none to disable mobile copy/zoom/menu behavior
       className={`w-20 h-20 flex items-center justify-center text-5xl border border-white/20 rounded-2xl transition-all shadow-lg text-white font-uthmanic cursor-pointer active:scale-95 select-none touch-none
         ${status === 'correct' ? 'bg-green-600/80' : 
           status === 'wrong' ? 'bg-red-600/80' : 
