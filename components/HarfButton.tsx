@@ -46,13 +46,11 @@ export default function HarfButton({ harf, audioPath }: HarfButtonProps) {
   };
 
   const handleAction = () => {
-    // If already listening, clicking again cancels it
     if (status === 'listening') {
       stopRecognition();
       return;
     }
     
-    // Otherwise play sound
     if (audioPath) {
       const audio = new Audio(audioPath);
       audio.play().catch(console.error);
@@ -61,11 +59,11 @@ export default function HarfButton({ harf, audioPath }: HarfButtonProps) {
 
   return (
     <button
-      // Use touch/mouse start to detect the "hold"
-      onMouseDown={() => {
+      // Mouse events
+      onMouseDown={(e) => {
+        e.preventDefault(); // Prevents focus/selection
         pressTimer.current = setTimeout(() => startRecognition(), 500);
       }}
-      // On release, if we were holding, stop timer. If we weren't holding, trigger action
       onMouseUp={() => {
         if (pressTimer.current) {
           clearTimeout(pressTimer.current);
@@ -77,10 +75,14 @@ export default function HarfButton({ harf, audioPath }: HarfButtonProps) {
       onMouseLeave={() => {
         if (pressTimer.current) clearTimeout(pressTimer.current);
       }}
-      onTouchStart={() => {
+      
+      // Touch events
+      onTouchStart={(e) => {
+        // e.preventDefault() is omitted here or used carefully to allow scroll if needed, 
+        // but adding it here prevents the copy/context menu
         pressTimer.current = setTimeout(() => startRecognition(), 500);
       }}
-      onTouchEnd={() => {
+      onTouchEnd={(e) => {
         if (pressTimer.current) {
           clearTimeout(pressTimer.current);
           handleAction();
@@ -88,7 +90,9 @@ export default function HarfButton({ harf, audioPath }: HarfButtonProps) {
           stopRecognition();
         }
       }}
-      className={`w-20 h-20 flex items-center justify-center text-5xl border border-white/20 rounded-2xl transition-all shadow-lg text-white font-uthmanic cursor-pointer active:scale-95 
+      
+      // Added select-none and touch-none to disable mobile copy/zoom/menu behavior
+      className={`w-20 h-20 flex items-center justify-center text-5xl border border-white/20 rounded-2xl transition-all shadow-lg text-white font-uthmanic cursor-pointer active:scale-95 select-none touch-none
         ${status === 'correct' ? 'bg-green-600/80' : 
           status === 'wrong' ? 'bg-red-600/80' : 
           status === 'listening' ? 'bg-blue-600/80 animate-pulse' : 'bg-white/10'}`}
