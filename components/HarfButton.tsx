@@ -9,72 +9,89 @@ interface HarfButtonProps {
 export default function HarfButton({ harf, audioPath }: HarfButtonProps) {
   const [status, setStatus] = useState<'neutral' | 'correct' | 'wrong' | 'listening'>('neutral');
   const pressTimer = useRef<NodeJS.Timeout | null>(null);
+  const recognitionRef = useRef<any>(null);
 
-  const playSound = () => {
-    if (!audioPath) return;
-    const audio = new Audio(audioPath);
-    audio.play().catch((e) => console.error("Playback failed:", e));
+  const stopRecognition = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
+    setStatus('neutral');
   };
 
   const startRecognition = () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      alert("Speech recognition is not supported in this browser.");
-      return;
-    }
+    if (!SpeechRecognition) return;
 
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'ar-SA';
+    recognitionRef.current = new SpeechRecognition();
+    recognitionRef.current.lang = 'ar-SA';
+    
     setStatus('listening');
 
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      // Normalization: Remove Fatha and compare
-      if (transcript.includes(harf.replace('َ', ''))) {
+    recognitionRef.current.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript.trim();
+      const cleanHarf = harf.replace('َ', '');
+      
+      if (transcript.includes(cleanHarf)) {
         setStatus('correct');
       } else {
         setStatus('wrong');
       }
       setTimeout(() => setStatus('neutral'), 2000);
+      recognitionRef.current = null;
     };
 
-    recognition.onerror = () => {
-      setStatus('neutral');
-    };
-
-    recognition.start();
+    recognitionRef.current.onerror = () => stopRecognition();
+    recognitionRef.current.start();
   };
 
-  const handleMouseDown = () => {
-    pressTimer.current = setTimeout(() => {
-      startRecognition();
-      pressTimer.current = null;
-    }, 500); // 500ms delay to trigger recording
-  };
-
-  const handleMouseUp = () => {
-    if (pressTimer.current) {
-      clearTimeout(pressTimer.current);
-      playSound();
+  const handleAction = () => {
+    // If already listening, clicking again cancels it
+    if (status === 'listening') {
+      stopRecognition();
+      return;
     }
-  };
-
-  const getStyle = () => {
-    if (status === 'correct') return 'bg-green-600/80';
-    if (status === 'wrong') return 'bg-red-600/80';
-    if (status === 'listening') return 'bg-blue-600/80 animate-pulse';
-    return 'bg-white/10 hover:bg-white/20';
+    
+    // Otherwise play sound
+    if (audioPath) {
+      const audio = new Audio(audioPath);
+      audio.play().catch(console.error);
+    }
   };
 
   return (
     <button
-      onMouseDown={handleMouseDown}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={() => pressTimer.current && clearTimeout(pressTimer.current)}
-      onTouchStart={handleMouseDown}
-      onTouchEnd={handleMouseUp}
-      style={{ fontFamily: 'UthmanicHafs, sans-serif' }}
-      className={`w-20 h-20 flex items-center justify-center text-5xl border border-white/20 rounded-2xl transition-all shadow-lg text-white font-uthmanic cursor-pointer active:scale-95 ${getStyle()}`}
+      // Use touch/mouse start to detect the "hold"
+      onMouseDown={() => {
+        pressTimer.current = setTimeout(() => startRecognition(), 500);
+      }}
+      // On release, if we were holding, stop timer. If we weren't holding, trigger action
+      onMouseUp={() => {
+        if (pressTimer.current) {
+          clearTimeout(pressTimer.current);
+          handleAction();
+        } else if (status === 'listening') {
+          stopRecognition();
+        }
+      }}
+      onMouseLeave={() => {
+        if (pressTimer.current) clearTimeout(pressTimer.current);
+      }}
+      onTouchStart={() => {
+        pressTimer.current = setTimeout(() => startRecognition(), 500);
+      }}
+      onTouchEnd={() => {
+        if (pressTimer.current) {
+          clearTimeout(pressTimer.current);
+          handleAction();
+        } else if (status === 'listening') {
+          stopRecognition();
+        }
+      }}
+      className={`w-20 h-20 flex items-center justify-center text-5xl border border-white/20 rounded-2xl transition-all shadow-lg text-white font-uthmanic cursor-pointer active:scale-95 
+        ${status === 'correct' ? 'bg-green-600/80' : 
+          status === 'wrong' ? 'bg-red-600/80' : 
+          status === 'listening' ? 'bg-blue-600/80 animate-pulse' : 'bg-white/10'}`}
     >
       {harf}
     </button>
