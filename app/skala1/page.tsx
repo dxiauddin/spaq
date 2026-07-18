@@ -9,19 +9,37 @@ function Skala1Content() {
   const currentPage = parseInt(searchParams.get('page') || '1');
   const totalPages = 21;
 
-  // Exact mapping based on your requirements
+const harfToFileName: Record<string, string> = {
+    // Keep your existing ones, but add the "plain" versions
+    "أ": "a", "ب": "ba", "ت": "ta", "ث": "tha", "ج": "ja", "ح": "hha", 
+    "خ": "kho", "د": "da", "ذ": "za'", "ر": "ro", "ز": "za", "س": "sa", 
+    "ش": "sya", "ص": "so", "ض": "dho", "ط": "tho", "ظ": "zho", "ع": "ain", 
+    "غ": "gho", "ف": "fa", "ق": "qo", "ك": "ka", "ل": "la", "م": "ma", 
+    "ن": "na", "و": "wa", "هـ": "ha", "لا": "laa", "ء": "hamza", "ي": "ya",
+    // Also keep the Fatha versions just in case
+    "أَ": "a", "بَ": "ba", "تَ": "ta", "ثَ": "tha", "جَ": "ja", "حَ": "hha", 
+    "خَ": "kho", "دَ": "da", "ذَ": "za'", "رَ": "ro", "زَ": "za", "سَ": "sa", 
+    "شَ": "sya", "صَ": "so", "ضَ": "dho", "طَ": "tho", "ظَ": "zho", "عَ": "ain", 
+    "غَ": "gho", "فَ": "fa", "قَ": "qo", "كَ": "ka", "لَ": "la", "مَ": "ma", 
+    "نَ": "na", "وَ": "wa", "هَـ": "ha", "لَا": "laa", "ءَ": "hamza", "يَ": "ya"
+  };
+
+  const getAudioPath = (harf: string) => {
+    const cleanHarf = harf.replace('َ', '');
+    const fileName = harfToFileName[cleanHarf];
+    
+    if (!fileName) {
+      console.warn(`Audio file mapping missing for: ${cleanHarf}`);
+      return null; // Returning null prevents trying to load a broken 404 path
+    }
+    return `/audio/${fileName}.mp3`;
+  };
+
   const charPageMap: Record<string, number> = {
-    "أ": 1, "ب": 1,
-    "ت": 2, "ث": 2,
-    "ج": 3, "ح": 3, "خ": 3,
-    "د": 4, "ذ": 4,
-    "ر": 5, "ز": 5,
-    "س": 6, "ش": 6,
-    "ص": 7, "ض": 7,
-    "ط": 8, "ظ": 8,
-    "ع": 9, "غ": 9,
-    "ف": 10, "ق": 10,
-    "ك": 11, "ل": 12, "م": 13, "ن": 14, "و": 15, "هـ": 16, "لا": 17, "ء": 18, "ي": 19
+    "أ": 1, "ب": 1, "ت": 2, "ث": 2, "ج": 3, "ح": 3, "خ": 3, "د": 4, "ذ": 4,
+    "ر": 5, "ز": 5, "س": 6, "ش": 6, "ص": 7, "ض": 7, "ط": 8, "ظ": 8, "ع": 9, 
+    "غ": 9, "ف": 10, "ق": 10, "ك": 11, "ل": 12, "م": 13, "ن": 14, "و": 15, 
+    "هـ": 16, "لا": 17, "ء": 18, "ي": 19
   };
 
   const arabicAlphabet = Object.keys(charPageMap);
@@ -34,7 +52,6 @@ function Skala1Content() {
     }));
   }, [charIndex]);
 
-  // ... [Keep pageConfigs, useEffect, etc. as they were] ...
   const pageConfigs: Record<number, { incentive: string[], others: string[] }> = {
     1: { incentive: ["بَ","أَ"], others: ["أَ", "بَ"] },
     2: { incentive: ["ثَ","تَ"], others: ["أَ", "بَ"] },
@@ -79,14 +96,11 @@ function Skala1Content() {
     setGroups(newGroups);
   }, [currentPage, config]); 
 
-  if (groups.length === 0) return <div className="min-h-screen bg-black" />;
-
   const sideButtonStyle = "fixed top-1/2 -translate-y-1/2 w-14 h-14 flex items-center justify-center bg-[#062e03]/80 border border-white/20 rounded-full transition-all disabled:opacity-30 z-10 text-2xl font-bold shadow-xl hover:bg-[#084004]";
   const circleBaseStyle = "w-12 h-12 flex items-center justify-center bg-[#062e03]/80 border border-white/20 rounded-full text-xl font-bold text-white shadow-xl hover:bg-[#084004] cursor-pointer";
 
   return (
     <main className="min-h-screen flex flex-col items-center bg-[radial-gradient(circle_at_center,_#062e03,_black)] text-white">
-      {/* ... [Keep navigation buttons and UI structure same as previous block] ... */}
       <button disabled={currentPage === 1} onClick={() => router.push(`?page=${currentPage - 1}`)} className={`${sideButtonStyle} left-4`}>{"<"}</button>
       <button disabled={currentPage === totalPages} onClick={() => router.push(`?page=${currentPage + 1}`)} className={`${sideButtonStyle} right-4`}>{">"}</button>
 
@@ -104,21 +118,21 @@ function Skala1Content() {
       </div>
 
       <div className="mt-6 flex justify-center gap-2 mb-10">
-        {currentPage !== 20 && config.incentive.map((harf, i) => <HarfButton key={i} harf={harf} />)}
+        {currentPage !== 20 && config.incentive.map((harf, i) => (
+            <HarfButton key={i} harf={harf} audioPath={getAudioPath(harf) || ""} />
+        ))}
       </div>
 
       <div className="flex flex-col items-center pb-20">
         <div dir="rtl" className="flex flex-col items-center gap-2 max-w-5xl">
           {groups.map((group, i) => (
             <div key={i} className="flex justify-center gap-2">
-              {group.map((harf, j) => <HarfButton key={j} harf={harf} />)}
+              {group.map((harf, j) => (
+                <HarfButton key={j} harf={harf} audioPath={getAudioPath(harf) || ""} />
+              ))}
             </div>
           ))}
         </div>
-      </div>
-
-      <div className="fixed bottom-0 left-0 w-full bg-[#062e03]/80 backdrop-blur-md border-t border-white/10 text-center py-2 z-50 text-xs text-white/60">
-        Briged Kedua Belas Infantri Malaysia
       </div>
     </main>
   );
