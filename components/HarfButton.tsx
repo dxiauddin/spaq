@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 interface HarfButtonProps {
   harf: string;
@@ -7,13 +7,21 @@ interface HarfButtonProps {
 }
 
 export default function HarfButton({ harf, audioPath }: HarfButtonProps) {
+  const [isPermanent, setIsPermanent] = useState(false);
   const [status, setStatus] = useState<'neutral' | 'correct' | 'wrong' | 'listening'>('neutral');
   const pressTimer = useRef<NodeJS.Timeout | null>(null);
   const recognitionRef = useRef<any>(null);
+  const isActionTriggered = useRef(false); // Lock to prevent double audio
+
+  // Load persistence state
+  useEffect(() => {
+    if (localStorage.getItem(`harf-status-${harf}`) === 'correct') {
+      setIsPermanent(true);
+    }
+  }, [harf]);
 
   const stopRecognition = () => {
     if (recognitionRef.current) {
-      console.log("Mic stopped.");
       recognitionRef.current.stop();
       recognitionRef.current = null;
     }
@@ -21,96 +29,68 @@ export default function HarfButton({ harf, audioPath }: HarfButtonProps) {
   };
 
   const startRecognition = () => {
+    if (isPermanent) return;
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      alert("Speech recognition not supported.");
-      return;
-    }
+    if (!SpeechRecognition) return;
 
-    console.log("Mic activated for:", harf);
     recognitionRef.current = new SpeechRecognition();
     recognitionRef.current.lang = 'ar-SA';
-    recognitionRef.current.continuous = false;
-    recognitionRef.current.interimResults = false;
-    
     setStatus('listening');
 
     recognitionRef.current.onresult = (event: any) => {
       const transcript = event.results[0][0].transcript.trim();
       const cleanHarf = harf.replace('َ', '');
       
-      console.log(`Mic heard: "${transcript}" | Target: "${cleanHarf}"`);
-      
       if (transcript.includes(cleanHarf)) {
-        console.log("Match: Correct!");
         setStatus('correct');
+        setIsPermanent(true);
+        localStorage.setItem(`harf-status-${harf}`, 'correct');
       } else {
-        console.log("Match: Wrong.");
         setStatus('wrong');
+        setTimeout(() => setStatus('neutral'), 2000);
       }
-      setTimeout(() => setStatus('neutral'), 2000);
       recognitionRef.current = null;
     };
-
-    recognitionRef.current.onerror = (event: any) => {
-      console.error("Speech Recognition Error:", event.error);
-      stopRecognition();
-    };
-
+    recognitionRef.current.onerror = () => stopRecognition();
     recognitionRef.current.start();
   };
 
-  // Helper to handle the "click" only if we weren't just recording
   const handleShortClick = () => {
-    console.log("Button clicked (short press).");
+    // If the action was already triggered by another event, ignore this one
+    if (isActionTriggered.current) return;
+    
+    isActionTriggered.current = true;
     if (audioPath) {
       const audio = new Audio(audioPath);
       audio.play().catch(console.error);
+    }
+    // Reset lock after 300ms
+    setTimeout(() => { isActionTriggered.current = false; }, 300);
+  };
+
+  // Unified Handler for Release
+  const handleRelease = () => {
+    if (pressTimer.current) {
+      clearTimeout(pressTimer.current);
+      pressTimer.current = null;
+      handleShortClick();
+    } else if (status === 'listening') {
+      stopRecognition();
     }
   };
 
   return (
     <button
-      onMouseDown={(e) => {
-        e.preventDefault();
-        console.log("Mouse down detected, waiting for long press...");
-        pressTimer.current = setTimeout(() => startRecognition(), 500);
-      }}
-      onMouseUp={() => {
-        if (pressTimer.current) {
-          // It was a short press
-          clearTimeout(pressTimer.current);
-          pressTimer.current = null;
-          handleShortClick();
-        } else if (status === 'listening') {
-          // We were recording, now we release
-          stopRecognition();
-        }
-      }}
-      onMouseLeave={() => {
-        if (pressTimer.current) {
-          console.log("Mouse left, cancelling.");
-          clearTimeout(pressTimer.current);
-          pressTimer.current = null;
-        }
-      }}
-      onTouchStart={(e) => {
-        console.log("Touch start detected, waiting for long press...");
-        pressTimer.current = setTimeout(() => startRecognition(), 500);
-      }}
-      onTouchEnd={(e) => {
-        if (pressTimer.current) {
-          // It was a short press
-          clearTimeout(pressTimer.current);
-          pressTimer.current = null;
-          handleShortClick();
-        } else if (status === 'listening') {
-          // We were recording, now we release
-          stopRecognition();
-        }
-      }}
+      onMouseDown={(e) => { e.preventDefault(); pressTimer.current = setTimeout(() => startRecognition(), 500); }}
+      onMouseUp={handleRelease}
+      onMouseLeave={() => { if (pressTimer.current) clearTimeout(pressTimer.current); pressTimer.current = null; }}
+      
+      onTouchStart={(e) => { pressTimer.current = setTimeout(() => startRecognition(), 500); }}
+      onTouchEnd={(e) => { e.preventDefault(); handleRelease(); }}
+      
       className={`w-20 h-20 flex items-center justify-center text-5xl border border-white/20 rounded-2xl transition-all shadow-lg text-white font-uthmanic cursor-pointer active:scale-95 select-none touch-none
-        ${status === 'correct' ? 'bg-green-600/80' : 
+        ${isPermanent ? 'bg-green-600/80' : 
+          status === 'correct' ? 'bg-green-600/80' : 
           status === 'wrong' ? 'bg-red-600/80' : 
           status === 'listening' ? 'bg-blue-600/80 animate-pulse' : 'bg-white/10'}`}
     >
