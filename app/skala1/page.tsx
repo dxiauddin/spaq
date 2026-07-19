@@ -9,12 +9,8 @@ function Skala1Content() {
   const currentPage = parseInt(searchParams.get('page') || '1');
   const totalPages = 21;
 
+  // Updated: Mapping keys directly to Fatha versions
   const harfToFileName: Record<string, string> = {
-    "أ": "a", "ب": "ba", "ت": "ta", "ث": "tha", "ج": "ja", "ح": "hha", 
-    "خ": "kho", "د": "da", "ذ": "za'", "ر": "ro", "ز": "za", "س": "sa", 
-    "ش": "sya", "ص": "so", "ض": "dho", "ط": "tho", "ظ": "zho", "ع": "ain", 
-    "غ": "gho", "ف": "fa", "ق": "qo", "ك": "ka", "ل": "la", "م": "ma", 
-    "ن": "na", "و": "wa", "هـ": "ha", "لا": "laa", "ء": "hamza", "ي": "ya",
     "أَ": "a", "بَ": "ba", "تَ": "ta", "ثَ": "tha", "جَ": "ja", "حَ": "hha", 
     "خَ": "kho", "دَ": "da", "ذَ": "za'", "رَ": "ro", "زَ": "za", "سَ": "sa", 
     "شَ": "sya", "صَ": "so", "ضَ": "dho", "طَ": "tho", "ظَ": "zho", "عَ": "ain", 
@@ -22,10 +18,13 @@ function Skala1Content() {
     "نَ": "na", "وَ": "wa", "هَـ": "ha", "لَا": "laa", "ءَ": "hamza", "يَ": "ya"
   };
 
+  // Updated: Now looks up exact harf (with Fatha) without stripping it
   const getAudioPath = (harf: string) => {
-    const cleanHarf = harf.replace('َ', '');
-    const fileName = harfToFileName[cleanHarf];
-    if (!fileName) return null;
+    const fileName = harfToFileName[harf];
+    if (!fileName) {
+      console.warn(`Audio file mapping missing for: ${harf}`);
+      return null;
+    }
     return `/audio/${fileName}.mp3`;
   };
 
