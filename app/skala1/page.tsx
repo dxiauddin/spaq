@@ -9,14 +9,12 @@ function Skala1Content() {
   const currentPage = parseInt(searchParams.get('page') || '1');
   const totalPages = 21;
 
-const harfToFileName: Record<string, string> = {
-    // Keep your existing ones, but add the "plain" versions
+  const harfToFileName: Record<string, string> = {
     "أ": "a", "ب": "ba", "ت": "ta", "ث": "tha", "ج": "ja", "ح": "hha", 
     "خ": "kho", "د": "da", "ذ": "za'", "ر": "ro", "ز": "za", "س": "sa", 
     "ش": "sya", "ص": "so", "ض": "dho", "ط": "tho", "ظ": "zho", "ع": "ain", 
     "غ": "gho", "ف": "fa", "ق": "qo", "ك": "ka", "ل": "la", "م": "ma", 
     "ن": "na", "و": "wa", "هـ": "ha", "لا": "laa", "ء": "hamza", "ي": "ya",
-    // Also keep the Fatha versions just in case
     "أَ": "a", "بَ": "ba", "تَ": "ta", "ثَ": "tha", "جَ": "ja", "حَ": "hha", 
     "خَ": "kho", "دَ": "da", "ذَ": "za'", "رَ": "ro", "زَ": "za", "سَ": "sa", 
     "شَ": "sya", "صَ": "so", "ضَ": "dho", "طَ": "tho", "ظَ": "zho", "عَ": "ain", 
@@ -27,11 +25,7 @@ const harfToFileName: Record<string, string> = {
   const getAudioPath = (harf: string) => {
     const cleanHarf = harf.replace('َ', '');
     const fileName = harfToFileName[cleanHarf];
-    
-    if (!fileName) {
-      console.warn(`Audio file mapping missing for: ${cleanHarf}`);
-      return null; // Returning null prevents trying to load a broken 404 path
-    }
+    if (!fileName) return null;
     return `/audio/${fileName}.mp3`;
   };
 
@@ -119,16 +113,26 @@ const harfToFileName: Record<string, string> = {
 
       <div className="mt-6 flex justify-center gap-2 mb-10">
         {currentPage !== 20 && config.incentive.map((harf, i) => (
-            <HarfButton key={i} harf={harf} audioPath={getAudioPath(harf) || ""} />
+            <HarfButton 
+                key={`incentive-${i}`} 
+                id={`inc-${currentPage}-${i}`}
+                harf={harf} 
+                audioPath={getAudioPath(harf) || ""} 
+            />
         ))}
       </div>
 
       <div className="flex flex-col items-center pb-20">
         <div dir="rtl" className="flex flex-col items-center gap-2 max-w-5xl">
           {groups.map((group, i) => (
-            <div key={i} className="flex justify-center gap-2">
+            <div key={`group-${i}`} className="flex justify-center gap-2">
               {group.map((harf, j) => (
-                <HarfButton key={j} harf={harf} audioPath={getAudioPath(harf) || ""} />
+                <HarfButton 
+                    key={`grid-${i}-${j}`} 
+                    id={`grid-${currentPage}-${i}-${j}`}
+                    harf={harf} 
+                    audioPath={getAudioPath(harf) || ""} 
+                />
               ))}
             </div>
           ))}
