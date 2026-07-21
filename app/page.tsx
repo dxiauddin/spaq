@@ -25,8 +25,9 @@ export default function Home() {
       <h2 className="text-lg md:text-xl font-medium opacity-90 text-center">
         Briged Kedua Belas Infantri Malaysia
       </h2>
-      <h1 className="text-5xl md:text-6xl font-bold mb-8">SPAQ</h1>
-      
+      <h2 className="text-5xl md:text-6xl font-bold mb-8">Silibus Pengajian Al-Quran</h2>
+       <h1 className="text-5xl md:text-6xl font-bold mb-8">(SPAQ)</h1>
+     
       {/* Buttons */}
       <button 
         onClick={() => router.push('/skala1?page=1')}
